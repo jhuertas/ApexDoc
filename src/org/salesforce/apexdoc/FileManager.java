@@ -275,17 +275,26 @@ public class FileManager {
                             Pattern p = Pattern.compile("\\s");
                             Matcher m = p.matcher(param);
 
+                            String paramType;
                             String paramName;
                             String paramDescription;
                             if (m.find()) {
                             	int ich = m.start();
-                                paramName = param.substring(0, ich);
-                                paramDescription = param.substring(ich + 1);
+                                paramType = param.substring(0, ich);
+                                if(m.find()){
+                                	int ich2 = m.start();
+                                	paramName = param.substring(ich + 1, ich2);
+                                    paramDescription = param.substring(ich2 + 1);
+                                }else{
+                                	paramName = "";                       
+                                    paramDescription = param.substring(ich + 1);
+                                }
                             } else {
+                            	paramType = "";
                                 paramName = param;
                                 paramDescription = null;
                             }
-                            contents += "<div class='paramName'>" + paramName + "</div>";
+                            contents += "<div><span class='paramType'>" + paramType + "</span><span class='paramName'>" + paramName + "</span></div>";
 
                             if (paramDescription != null)
                                 contents += "<div class='paramDescription'>" + paramDescription + "</div>";
