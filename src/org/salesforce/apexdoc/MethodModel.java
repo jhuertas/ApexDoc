@@ -45,6 +45,18 @@ public class MethodModel extends ApexModel {
         }
         return "";
     }
+    
+    public String getNameLineWithoutScope() {
+        String nameLine = getNameLine().trim();
+        if (nameLine != null && nameLine.length() > 0) {
+            int index = nameLine.indexOf(getMethodName());
+            if (index >= 0) {
+                String nameLineWS = nameLine.substring(index);
+                return nameLineWS;
+            }
+        }
+        return "";
+    }
 
     private ArrayList<String> params;
     private String returnType;

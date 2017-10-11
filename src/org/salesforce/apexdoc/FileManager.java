@@ -6,6 +6,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -20,6 +21,9 @@ public class FileManager {
     String path;
     public String header;
     public String APEX_DOC_PATH = "";
+    private static final String FILE_LIST     = "ApexDocFiles.txt";
+    private static final String IGNORE_FILE_LIST     = "IgnoreClass.txt";
+
     public StringBuffer infoMessages;
 
     public FileManager() {
@@ -84,13 +88,17 @@ public class FileManager {
         return false;
     }
 
+//    private String strLinkfromModel(ApexModel model, String strClassName, String hostedSourceURL) {
+//        return "<a target='_blank' class='hostedSourceLink' href='" + hostedSourceURL + strClassName + ".cls#L"
+//                + model.getInameLine() + "'>";
+//    }
+    
     private String strLinkfromModel(ApexModel model, String strClassName, String hostedSourceURL) {
-        return "<a target='_blank' class='hostedSourceLink' href='" + hostedSourceURL + strClassName + ".cls#L"
-                + model.getInameLine() + "'>";
+        return "";
     }
 
     private String strHTMLScopingPanel() {
-        String str = "<tr><td colspan='2' style='text-align: center;' >";
+        String str = "<tr><td colspan='2' style='text-align: center; display:none;' >";
         str += "Show: ";
 
         for (int i = 0; i < ApexDoc.rgstrScope.length; i++) {
@@ -113,17 +121,19 @@ public class FileManager {
      */
     private void makeFile(TreeMap<String, ClassGroup> mapGroupNameToClassGroup, ArrayList<ClassModel> cModels,
             String projectDetail, String homeContents, String hostedSourceURL, IProgressMonitor monitor) {
-        String links = "<table width='100%'>";
-        links += strHTMLScopingPanel();
-        links += "<tr style='vertical-align:top;' >";
-        links += getPageLinks(mapGroupNameToClassGroup, cModels);
+		String links = "";
+
+//		String links = "<table width='100%'>";
+//		links += strHTMLScopingPanel();
+//		links += "<tr style='vertical-align:top;' >";
+//		links += getPageLinks(mapGroupNameToClassGroup, cModels);
 
         if (homeContents != null && homeContents.trim().length() > 0) {
-            homeContents = links + "<td class='contentTD'>" + "<h2 class='section-title'>Home</h2>" + homeContents + "</td>";
+            homeContents =  "<h2 class='section-title'>Home</h2>" + homeContents;
             homeContents = Constants.getHeader(projectDetail) + homeContents + Constants.FOOTER;
         } else {
             homeContents = Constants.DEFAULT_HOME_CONTENTS;
-            homeContents = links + "<td class='contentTD'>" + "<h2 class='section-title'>Home</h2>" + homeContents + "</td>";
+            homeContents =   "<h2 class='section-title'>Home</h2>" + homeContents;
             homeContents = Constants.getHeader(projectDetail) + homeContents + Constants.FOOTER;
         }
 
@@ -133,25 +143,46 @@ public class FileManager {
 
         // create our Class Group content files
         createClassGroupContent(mapFNameToContent, links, projectDetail, mapGroupNameToClassGroup, cModels, monitor);
+        
+        
+        ArrayList<String> ignoredClasses = null;
+        try {
+          BufferedReader reader = new BufferedReader(new FileReader(IGNORE_FILE_LIST));
+          ignoredClasses = new ArrayList<String>();
+          String line;
+          while ((line = reader.readLine()) != null) {
+        	  ignoredClasses.add(line.trim().toLowerCase());
+          }
+          reader.close();
+        } catch (Exception e) {
+        }
+        
 
         for (ClassModel cModel : cModels) {
             String contents = links;
             if (cModel.getNameLine() != null && cModel.getNameLine().length() > 0) {
                 fileName = cModel.getClassName();
-                contents += "<td class='contentTD'>";
-
-                contents += htmlForClassModel(cModel, hostedSourceURL);
-
+                //contents += "<td class='contentTD'>";
+				if ((null == ignoredClasses)
+						|| ignoredClasses.contains(cModel.getClassName()
+								.toLowerCase()) == false) {
+					contents += htmlForClassModel(cModel, hostedSourceURL);
+				}
                 // deal with any nested classes
                 for (ClassModel cmChild : cModel.getChildClassesSorted()) {
-                    contents += "<p/>";
-                    contents += htmlForClassModel(cmChild, hostedSourceURL);
+					if ((null == ignoredClasses)
+							|| ignoredClasses
+									.contains(cmChild.getClassName().toLowerCase()) == false) {
+						 contents += "<p/>";
+		                 contents += htmlForClassModel(cmChild, hostedSourceURL);
+    				}
+                   
                 }
 
             } else {
                 continue;
             }
-            contents += "</div>";
+            //contents += "</div>";
 
             contents = Constants.getHeader(projectDetail) + contents + Constants.FOOTER;
             mapFNameToContent.put(fileName, contents);
@@ -171,16 +202,17 @@ public class FileManager {
     private String htmlForClassModel(ClassModel cModel, String hostedSourceURL) {
         String contents = "";
         contents += "<h2 class='section-title'>" +
-                strLinkfromModel(cModel, cModel.getTopmostClassName(), hostedSourceURL) +
-                cModel.getClassName() + "</a>" +
-                "</h2>";
+                
+                cModel.getClassName()  +
+                " Class </h2>";
 
         contents += "<div class='classSignature'>" +
-                strLinkfromModel(cModel, cModel.getTopmostClassName(), hostedSourceURL) +
-                escapeHTML(cModel.getNameLine()) + "</a></div>";
+                escapeHTML(cModel.getNameLine()) + "</div>";
+        contents += "<div class='classDetails'>" ;
 
+        
         if (cModel.getDescription() != "")
-            contents += "<div class='classDetails'>" + escapeHTML(cModel.getDescription());
+            contents += escapeHTML(cModel.getDescription());
         if (cModel.getAuthor() != "")
             contents += "<br/><br/>" + escapeHTML(cModel.getAuthor());
         if (cModel.getDate() != "")
@@ -217,7 +249,7 @@ public class FileManager {
             for (MethodModel method : cModel.getMethodsSorted()) {
                 contents += "<li class='methodscope" + method.getScope() + "' >";
                 contents += "<a class='methodTOCEntry' href='#" + method.getMethodName() + "'>"
-                        + method.getMethodName() + "</a>";
+                        + escapeHTML(method.getNameLineWithoutScope()) + "</a>";
                 if (method.getDescription() != "")
                     contents += "<div class='methodTOCDescription'>" + method.getDescription() + "</div>";
                 contents += "</li>";
@@ -227,11 +259,10 @@ public class FileManager {
             // full method display
             for (MethodModel method : cModel.getMethodsSorted()) {
                 contents += "<div class='methodscope" + method.getScope() + "' >";
-                contents += "<h2 class='methodHeader'><a id='" + method.getMethodName() + "'/>"
-                        + method.getMethodName() + "</h2>" +
+                contents += "<h2 id='" + method.getMethodName() + "' class='methodHeader'>"
+                        + escapeHTML(method.getNameLineWithoutScope()) + "</h2>" +
                         "<div class='methodSignature'>" +
-                        strLinkfromModel(method, cModel.getTopmostClassName(), hostedSourceURL) +
-                        escapeHTML(method.getNameLine()) + "</a></div>";
+                        escapeHTML(method.getNameLine()) + "</div>";
 
                 if (method.getDescription() != "")
                     contents += "<div class='methodDescription'>" + escapeHTML(method.getDescription()) + "</div>";
@@ -303,9 +334,9 @@ public class FileManager {
             if (cg.getContentSource() != null) {
                 String cgContent = parseHTMLFile(cg.getContentSource());
                 if (cgContent != "") {
-                    String strHtml = Constants.getHeader(projectDetail) + links + "<td class='contentTD'>" +
+                    String strHtml = Constants.getHeader(projectDetail) + links +
                             "<h2 class='section-title'>" +
-                            escapeHTML(cg.getName()) + "</h2>" + cgContent + "</td>";
+                            escapeHTML(cg.getName()) + "</h2>" + cgContent;
                     strHtml += Constants.FOOTER;
                     mapFNameToContent.put(cg.getContentFilename(), strHtml);
                     if (monitor != null)
@@ -337,47 +368,49 @@ public class FileManager {
         }
         cModels = new ArrayList<ClassModel>(tm.values());
 
-        String links = "<td width='20%' vertical-align='top' >";
-        links += "<div class='sidebar'><div class='navbar'><nav role='navigation'><ul id='mynavbar'>";
-        links += "<li id='idMenuindex'><a href='.' onclick=\"gotomenu('index.html', event);return false;\" class='nav-item'>Home</a></li>";
+        //String links = "<td width='20%' vertical-align='top' >";
+        String links = "";
+
+        //links += "<div class='sidebar'><div class='navbar'><nav role='navigation'><ul id='mynavbar'>";
+        //links += "<li id='idMenuindex'><a href='.' onclick=\"gotomenu('index.html', event);return false;\" class='nav-item'>Home</a></li>";
 
         // add a bucket ClassGroup for all Classes without a ClassGroup specified
-        if (createMiscellaneousGroup)
-            mapGroupNameToClassGroup.put("Miscellaneous", new ClassGroup("Miscellaneous", null));
+//        if (createMiscellaneousGroup)
+//            mapGroupNameToClassGroup.put("Miscellaneous", new ClassGroup("Miscellaneous", null));
 
         // create a sorted list of ClassGroups
 
-        for (String strGroup : mapGroupNameToClassGroup.keySet()) {
-            ClassGroup cg = mapGroupNameToClassGroup.get(strGroup);
-            String strGoTo = "onclick=\"gotomenu(document.location.href, event);return false;\"";
-            if (cg.getContentFilename() != null)
-                strGoTo = "onclick=\"gotomenu('" + cg.getContentFilename() + ".html" + "', event);return false;\"";
-            links += "<li class='header' id='idMenu" + cg.getContentFilename() +
-                    "'><a class='nav-item nav-section-title' href='.' " +
-                    strGoTo + " class='nav-item'>" + strGroup + "<span class='caret'></span></a></li>";
-            links += "<ul>";
+//        for (String strGroup : mapGroupNameToClassGroup.keySet()) {
+//            ClassGroup cg = mapGroupNameToClassGroup.get(strGroup);
+//            String strGoTo = "onclick=\"gotomenu(document.location.href, event);return false;\"";
+//            if (cg.getContentFilename() != null)
+//                strGoTo = "onclick=\"gotomenu('" + cg.getContentFilename() + ".html" + "', event);return false;\"";
+//            links += "<li class='header' id='idMenu" + cg.getContentFilename() +
+//                    "'><a class='nav-item nav-section-title' href='.' " +
+//                    strGoTo + " class='nav-item'>" + strGroup + "<span class='caret'></span></a></li>";
+//            links += "<ul>";
+//
+//            // even though this algorithm is O(n^2), it was timed at just 12
+//            // milliseconds, so not an issue!
+//            for (ClassModel cModel : cModels) {
+//                if (strGroup.equals(cModel.getClassGroup())
+//                        || (cModel.getClassGroup() == null && strGroup == "Miscellaneous")) {
+//                    if (cModel.getNameLine() != null && cModel.getNameLine().trim().length() > 0) {
+//                        String fileName = cModel.getClassName();
+//                        links += "<li class='subitem classscope" + cModel.getScope() + "' id='idMenu" + fileName +
+//                                "'><a href='.' onclick=\"gotomenu('" + fileName + ".html', event);return false;\" class='nav-item sub-nav-item scope" +
+//                                cModel.getScope() + "'>" +
+//                                fileName + "</a></li>";
+//                    }
+//                }
+//            }
+//
+//            links += "</ul>";
+//        }
+//
+//        links += "</ul></nav></div></div></div>";
 
-            // even though this algorithm is O(n^2), it was timed at just 12
-            // milliseconds, so not an issue!
-            for (ClassModel cModel : cModels) {
-                if (strGroup.equals(cModel.getClassGroup())
-                        || (cModel.getClassGroup() == null && strGroup == "Miscellaneous")) {
-                    if (cModel.getNameLine() != null && cModel.getNameLine().trim().length() > 0) {
-                        String fileName = cModel.getClassName();
-                        links += "<li class='subitem classscope" + cModel.getScope() + "' id='idMenu" + fileName +
-                                "'><a href='.' onclick=\"gotomenu('" + fileName + ".html', event);return false;\" class='nav-item sub-nav-item scope" +
-                                cModel.getScope() + "'>" +
-                                fileName + "</a></li>";
-                    }
-                }
-            }
-
-            links += "</ul>";
-        }
-
-        links += "</ul></nav></div></div></div>";
-
-        links += "</td>";
+//        links += "</td>";
         return links;
     }
 
@@ -401,13 +434,13 @@ public class FileManager {
     }
 
     private void copy(String toFileName) throws IOException, Exception {
-        docopy("apex_doc_logo.png", toFileName);
-        docopy("ApexDoc.css", toFileName);
-        docopy("ApexDoc.js", toFileName);
-        docopy("CollapsibleList.js", toFileName);
-        docopy("jquery-1.11.1.js", toFileName);
-        docopy("toggle_block_btm.gif", toFileName);
-        docopy("toggle_block_stretch.gif", toFileName);
+        //docopy("apex_doc_logo.png", toFileName);
+        //docopy("ApexDoc.css", toFileName);
+        //docopy("ApexDoc.js", toFileName);
+        //docopy("CollapsibleList.js", toFileName);
+        //docopy("jquery-1.11.1.js", toFileName);
+        //docopy("toggle_block_btm.gif", toFileName);
+        //docopy("toggle_block_stretch.gif", toFileName);
 
     }
 
@@ -416,12 +449,32 @@ public class FileManager {
         ArrayList<File> listOfFilesToCopy = new ArrayList<File>();
         if (folder != null) {
             File[] listOfFiles = folder.listFiles();
-            if (listOfFiles != null && listOfFiles.length > 0) {
-                for (int i = 0; i < listOfFiles.length; i++) {
-                    if (listOfFiles[i].isFile()) {
-                        listOfFilesToCopy.add(listOfFiles[i]);
-                    }
-                }
+                  
+            ArrayList<String> includedFiles = null;
+            try {
+              BufferedReader reader = new BufferedReader(new FileReader(FILE_LIST));
+              includedFiles = new ArrayList<String>();
+              String line;
+              while ((line = reader.readLine()) != null) {
+                includedFiles.add(line.trim().toLowerCase());
+              }
+              reader.close();
+            } catch (Exception e) {
+            }
+            
+            ArrayList<File> files = new ArrayList<File>();
+			if (listOfFiles != null) {
+				for (File f : listOfFiles) {
+					if ((null == includedFiles)
+							|| includedFiles
+									.contains(f.getName().toLowerCase())) {
+						files.add(f);
+					}
+				}
+			}
+            
+            if (files != null && files.size() > 0) {
+                return files;
             } else {
                 System.out.println("WARNING: No files found in directory: " + path);
             }
