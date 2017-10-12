@@ -7,6 +7,13 @@
     padding: 5px 5px 5px 14px;
     margin: 0 0 2px -12px;
 }
+.mainsection-title {
+    background-color: #003672; /* rgb(155,203,236); */
+    color: white;
+    font-size: 100%;
+    font-weight: bold;
+    padding: 5px 5px 5px 14px;
+}
 .section-title a {
     color: white;
 }
@@ -87,8 +94,9 @@
     font-size: .9em;
     text-overflow: ellipsis;
     overflow: hidden;
-    line-height: .9em;
-    height: .9em;
+    line-height: 1.3em;
+    height:1.3em;
+    white-space: nowrap;
 }
 /* method listing related classes */
 .methodSignature {
@@ -133,12 +141,13 @@
     background-color: #f7f7f7;
     display: block;
     padding: 1em;
-    white-space: nowrap;
+    white-space: pre;
 }
 /* SIDEBAR CSS */
 div.navbar {
     font-size: .9em;
     font-weight: normal;
+    margin: 0 0 2px -12px;
 }
 div.navbar a:hover {
     text-decoration: underline;
@@ -230,5 +239,8 @@ code {
     font-style: normal;
     font-weight: normal;
     overflow: auto;
+}
+pre {
+    padding: 2px;
 }
 /* END - SIDEBAR STYLES */

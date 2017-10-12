@@ -126,7 +126,7 @@ public class FileManager {
 //		String links = "<table width='100%'>";
 //		links += strHTMLScopingPanel();
 //		links += "<tr style='vertical-align:top;' >";
-//		links += getPageLinks(mapGroupNameToClassGroup, cModels);
+		//links += getPageLinks(mapGroupNameToClassGroup, cModels);
 
         if (homeContents != null && homeContents.trim().length() > 0) {
             homeContents =  "<h2 class='section-title'>Home</h2>" + homeContents;
@@ -160,6 +160,8 @@ public class FileManager {
 
         for (ClassModel cModel : cModels) {
             String contents = links;
+            contents += getClassModelLinks(mapGroupNameToClassGroup, cModel, ignoredClasses);
+
             if (cModel.getNameLine() != null && cModel.getNameLine().length() > 0) {
                 fileName = cModel.getClassName();
                 //contents += "<td class='contentTD'>";
@@ -201,7 +203,7 @@ public class FileManager {
      */
     private String htmlForClassModel(ClassModel cModel, String hostedSourceURL) {
         String contents = "";
-        contents += "<h2 class='section-title'>" +
+        contents += "<h2 id='" + cModel.getClassName().replace(".", "_") + "' class='section-title'>" +
                 
                 cModel.getClassName()  +
                 " Class </h2>";
@@ -310,7 +312,7 @@ public class FileManager {
 
                 if (method.getExample() != "") {
                     contents += "<div class='methodSubTitle'>Example</div>";
-                    contents += "<code class='methodExample'>" + escapeHTML(method.getExample()) + "</code>";
+                    contents += "<blockquote><pre><code class='methodExample'>" + escapeHTML(method.getExample()) + "</code></pre></blockquote>";
                 }
 
                 if (method.getAuthor() != "") {
@@ -365,31 +367,30 @@ public class FileManager {
      *            list of ClassModels
      * @return String of HTML
      */
-    private String getPageLinks(TreeMap<String, ClassGroup> mapGroupNameToClassGroup, ArrayList<ClassModel> cModels) {
+    private String getClassModelLinks(TreeMap<String, ClassGroup> mapGroupNameToClassGroup, ClassModel cModel, ArrayList<String> ignoredClasses) {
         boolean createMiscellaneousGroup = false;
 
         // this is the only place we need the list of class models sorted by name.
         TreeMap<String, ClassModel> tm = new TreeMap<String, ClassModel>();
-        for (ClassModel cm : cModels) {
-            tm.put(cm.getClassName().toLowerCase(), cm);
-            if (!createMiscellaneousGroup && cm.getClassGroup() == null)
+            tm.put(cModel.getClassName().toLowerCase(), cModel);
+            if (!createMiscellaneousGroup && cModel.getClassGroup() == null)
                 createMiscellaneousGroup = true;
-        }
-        cModels = new ArrayList<ClassModel>(tm.values());
+        
+        ArrayList<ClassModel> cModels  = new ArrayList<ClassModel>(tm.values());
 
         //String links = "<td width='20%' vertical-align='top' >";
         String links = "";
 
-        //links += "<div class='sidebar'><div class='navbar'><nav role='navigation'><ul id='mynavbar'>";
+        links += "<div class='sidebar'><div class='navbar'><nav role='navigation'>";
         //links += "<li id='idMenuindex'><a href='.' onclick=\"gotomenu('index.html', event);return false;\" class='nav-item'>Home</a></li>";
 
         // add a bucket ClassGroup for all Classes without a ClassGroup specified
-//        if (createMiscellaneousGroup)
-//            mapGroupNameToClassGroup.put("Miscellaneous", new ClassGroup("Miscellaneous", null));
+        if (createMiscellaneousGroup)
+            mapGroupNameToClassGroup.put("API", new ClassGroup("API", null));
 
         // create a sorted list of ClassGroups
 
-//        for (String strGroup : mapGroupNameToClassGroup.keySet()) {
+        for (String strGroup : mapGroupNameToClassGroup.keySet()) {
 //            ClassGroup cg = mapGroupNameToClassGroup.get(strGroup);
 //            String strGoTo = "onclick=\"gotomenu(document.location.href, event);return false;\"";
 //            if (cg.getContentFilename() != null)
@@ -401,23 +402,35 @@ public class FileManager {
 //
 //            // even though this algorithm is O(n^2), it was timed at just 12
 //            // milliseconds, so not an issue!
-//            for (ClassModel cModel : cModels) {
-//                if (strGroup.equals(cModel.getClassGroup())
-//                        || (cModel.getClassGroup() == null && strGroup == "Miscellaneous")) {
-//                    if (cModel.getNameLine() != null && cModel.getNameLine().trim().length() > 0) {
-//                        String fileName = cModel.getClassName();
-//                        links += "<li class='subitem classscope" + cModel.getScope() + "' id='idMenu" + fileName +
-//                                "'><a href='.' onclick=\"gotomenu('" + fileName + ".html', event);return false;\" class='nav-item sub-nav-item scope" +
-//                                cModel.getScope() + "'>" +
-//                                fileName + "</a></li>";
-//                    }
-//                }
-//            }
+                if (strGroup.equals(cModel.getClassGroup())
+                        || (cModel.getClassGroup() == null && strGroup == "API")) {
+                    if (cModel.getNameLine() != null && cModel.getNameLine().trim().length() > 0) {
+                        String fileName = cModel.getClassName();
+                        links += "<div class='mainsection-title classscope" + cModel.getScope() + "' id='idMenu" + fileName +
+                                "'>" + 
+                                fileName + " Classes </div>";
+                        links += "<ul id='mynavbar'>";
+                        for (ClassModel cmChild : cModel.getChildClassesSorted()) {
+        					if ((null == ignoredClasses)
+        							|| ignoredClasses
+        									.contains(cmChild.getClassName().toLowerCase()) == false) {
+        						String childName = cmChild.getClassName();
+                                links += "<li class='subitem classscope" + cModel.getScope() + "' id='idMenu" + childName +
+                                        "'><a href='#" + childName.replace(".", "_") + "' class='nav-item sub-nav-item scope" +
+                                        cModel.getScope() + "'>" +
+                                        childName + "</a></li>";
+            				}
+                           
+                        }
+                        links += "</ul>";
+                    }
+                }
+            
 //
-//            links += "</ul>";
-//        }
-//
-//        links += "</ul></nav></div></div></div>";
+         //   links += "</ul>";
+       }
+
+        links += "</nav></div></div></div>";
 
 //        links += "</td>";
         return links;
